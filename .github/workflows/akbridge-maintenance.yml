@@ -1,0 +1,55 @@
+name: AKBridge automated validation and maintenance
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  schedule:
+    - cron: "0 4 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  offline-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: latest
+      - name: Install dependencies
+        run: uv sync --extra dev
+      - name: Run deterministic tests
+        run: uv run --no-sync python -m pytest -q
+      - name: Run offline per-interface acceptance
+        run: >-
+          uv run --no-sync akbridge-accept run --offline --workers 4
+          --output artifacts/acceptance/runs/offline.json
+      - name: Build distributable package
+        run: uv build
+      - name: Check catalog and MCP contract
+        run: >-
+          uv run --no-sync akbridge-maintain ci --strict
+          --baseline artifacts/acceptance/manifest.json
+          --current artifacts/maintenance/manifest.json
+          --catalog artifacts/catalog.json
+          --report artifacts/maintenance/latest.json
+          --check-latest
+      - name: Upload maintenance report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: akbridge-maintenance-report
+          path: |
+            artifacts/maintenance/
+            artifacts/acceptance/runs/

@@ -1,0 +1,42 @@
+{
+  "futures_foreign_commodity_realtime": {
+    "symbol": ["XAU"]
+  },
+  "macro_china_nbs_nation": {
+    "kind": "月度数据",
+    "path": "工业 > 工业分大类行业出口交货值(2018-至今) > 废弃资源综合利用业",
+    "period": "LAST5"
+  },
+  "macro_china_nbs_region": {
+    "kind": "分省季度数据",
+    "path": "人民生活 > 居民人均可支配收入",
+    "indicator": null,
+    "region": "北京市",
+    "period": "2018-2022"
+  },
+  "set_token": {
+    "token": "acceptance-placeholder"
+  },
+  "stock_gpzy_individual_pledge_ratio_detail_em": {
+    "symbol": "603132"
+  },
+  "stock_individual_notice_report": {
+    "security": "300237",
+    "symbol": "全部"
+  },
+  "volatility_yz_rv": {
+    "data": {
+      "index_column": "date",
+      "rows": [
+        {"date": "2026-01-05T09:30:00", "Open": 10.0, "High": 10.3, "Low": 9.9, "Close": 10.2},
+        {"date": "2026-01-05T10:30:00", "Open": 10.2, "High": 10.5, "Low": 10.1, "Close": 10.4},
+        {"date": "2026-01-05T13:30:00", "Open": 10.4, "High": 10.6, "Low": 10.2, "Close": 10.3},
+        {"date": "2026-01-05T14:30:00", "Open": 10.3, "High": 10.7, "Low": 10.2, "Close": 10.6},
+        {"date": "2026-01-06T09:30:00", "Open": 10.7, "High": 10.9, "Low": 10.5, "Close": 10.8},
+        {"date": "2026-01-06T10:30:00", "Open": 10.8, "High": 11.0, "Low": 10.6, "Close": 10.9},
+        {"date": "2026-01-06T13:30:00", "Open": 10.9, "High": 11.2, "Low": 10.8, "Close": 11.1},
+        {"date": "2026-01-06T14:30:00", "Open": 11.1, "High": 11.3, "Low": 10.9, "Close": 11.0}
+      ]
+    }
+  }
+}

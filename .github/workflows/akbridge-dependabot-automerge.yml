@@ -1,0 +1,147 @@
+name: AKBridge Dependabot auto-merge
+
+on:
+  workflow_run:
+    workflows: ["AKBridge automated validation and maintenance"]
+    types: [completed]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: akbridge-dependabot-automerge-${{ github.event.workflow_run.head_sha }}
+  cancel-in-progress: false
+
+jobs:
+  merge-akshare-update:
+    if: >-
+      github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate and merge the AKShare update
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const run = context.payload.workflow_run;
+            const associatedPullRequests = run.pull_requests ?? [];
+
+            if (associatedPullRequests.length !== 1) {
+              core.info(`Expected one associated PR, found ${associatedPullRequests.length}.`);
+              return;
+            }
+
+            const pullNumber = associatedPullRequests[0].number;
+            const { data: pull } = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pullNumber,
+            });
+
+            if (pull.state !== "open" || pull.draft) {
+              core.info("The associated PR is not an open, ready PR.");
+              return;
+            }
+            if (pull.user?.login !== "dependabot[bot]") {
+              core.info(`Ignoring PR author ${pull.user?.login ?? "unknown"}.`);
+              return;
+            }
+            if (!pull.head.ref.startsWith("dependabot/uv/akshare-")) {
+              core.setFailed(`Unexpected Dependabot branch: ${pull.head.ref}`);
+              return;
+            }
+            if (pull.head.sha !== run.head_sha) {
+              core.setFailed("The validated commit is no longer the PR head.");
+              return;
+            }
+
+            const files = await github.paginate(github.rest.pulls.listFiles, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pullNumber,
+              per_page: 100,
+            });
+            const allowedFiles = new Set(["pyproject.toml", "uv.lock"]);
+            const changedFiles = files.map((file) => file.filename);
+            const invalidFile = files.find(
+              (file) => !allowedFiles.has(file.filename) || file.status === "removed",
+            );
+            if (invalidFile || !changedFiles.includes("pyproject.toml")) {
+              core.setFailed(`Unexpected changed files: ${changedFiles.join(", ")}`);
+              return;
+            }
+
+            async function readText(path, ref) {
+              const { data } = await github.rest.repos.getContent({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                path,
+                ref,
+              });
+              if (Array.isArray(data) || data.type !== "file" || !data.content) {
+                throw new Error(`Unable to read ${path} at ${ref}.`);
+              }
+              return Buffer.from(data.content, "base64").toString("utf8");
+            }
+
+            function extractAkshareVersion(text) {
+              const matches = [...text.matchAll(/"akshare==([^"\r\n]+)"/g)];
+              if (matches.length !== 1) {
+                throw new Error(`Expected one pinned AKShare dependency, found ${matches.length}.`);
+              }
+              return matches[0][1];
+            }
+
+            function parseStableVersion(version) {
+              const match = /^(\d+)\.(\d+)\.(\d+)$/.exec(version);
+              if (!match) {
+                throw new Error(`Automatic merge requires a stable x.y.z version: ${version}`);
+              }
+              return match.slice(1).map(Number);
+            }
+
+            const baseText = await readText("pyproject.toml", pull.base.sha);
+            const headText = await readText("pyproject.toml", pull.head.sha);
+            const baseVersion = extractAkshareVersion(baseText);
+            const headVersion = extractAkshareVersion(headText);
+            const normalizedBase = baseText.replace(
+              `"akshare==${baseVersion}"`,
+              '"akshare==__VERSION__"',
+            );
+            const normalizedHead = headText.replace(
+              `"akshare==${headVersion}"`,
+              '"akshare==__VERSION__"',
+            );
+            if (normalizedBase !== normalizedHead) {
+              core.setFailed("pyproject.toml contains changes other than the AKShare version.");
+              return;
+            }
+
+            const baseParts = parseStableVersion(baseVersion);
+            const headParts = parseStableVersion(headVersion);
+            const comparison = headParts.findIndex((value, index) => value !== baseParts[index]);
+            const isUpgrade = comparison >= 0 && headParts[comparison] > baseParts[comparison];
+            if (!isUpgrade) {
+              core.setFailed(`AKShare ${baseVersion} -> ${headVersion} is not an upgrade.`);
+              return;
+            }
+            if (baseParts[0] !== headParts[0]) {
+              core.notice(`Major update ${baseVersion} -> ${headVersion} requires manual review.`);
+              return;
+            }
+
+            const result = await github.rest.pulls.merge({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pullNumber,
+              merge_method: "squash",
+              sha: run.head_sha,
+              commit_title: `chore: update AKShare to ${headVersion} (#${pullNumber})`,
+              commit_message: "Validated by the complete AKBridge offline acceptance gate.",
+            });
+            if (!result.data.merged) {
+              core.setFailed(result.data.message || "GitHub did not merge the PR.");
+              return;
+            }
+            core.notice(`Merged AKShare ${baseVersion} -> ${headVersion}.`);

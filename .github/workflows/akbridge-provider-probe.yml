@@ -1,0 +1,66 @@
+name: AKBridge scheduled provider acceptance
+
+on:
+  schedule:
+    - cron: "0 4 1 * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  provider-acceptance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: latest
+      - name: Install dependencies
+        run: uv sync --extra dev
+      - name: Run isolated full provider acceptance
+        run: >-
+          uv run --no-sync akbridge-maintain ci --strict --provider
+          --timeout 30 --workers 4
+          --baseline artifacts/acceptance/manifest.json
+          --current artifacts/maintenance/provider-manifest.json
+          --catalog artifacts/provider-catalog.json
+          --report artifacts/maintenance/provider-latest.json
+      - name: Refresh README acceptance assets
+        if: ${{ always() && hashFiles('artifacts/maintenance/provider-run.json') != '' }}
+        run: >-
+          uv run --no-sync akbridge-accept report
+          --run artifacts/maintenance/provider-run.json
+          --output-dir artifacts/acceptance
+      - name: Commit refreshed acceptance assets
+        if: ${{ always() && hashFiles('artifacts/acceptance/status.svg') != '' }}
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            artifacts/acceptance/status.svg \
+            artifacts/acceptance/SUMMARY.md \
+            artifacts/acceptance/summary.json \
+            artifacts/acceptance/ledger.csv
+          if git diff --cached --quiet; then
+            echo "Acceptance assets are unchanged."
+          else
+            git commit -m "chore: update provider acceptance results"
+            git push
+          fi
+      - name: Upload provider acceptance report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: akbridge-provider-acceptance
+          path: |
+            artifacts/maintenance/
+            artifacts/acceptance/

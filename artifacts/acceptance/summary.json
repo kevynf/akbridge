@@ -1,0 +1,33 @@
+{
+  "akshare_version": "1.18.81",
+  "generated_at": "2026-08-06T14:29:02.949269+00:00",
+  "interface_count": 1093,
+  "mcp_adapter_accepted": 1093,
+  "mcp_adapter_acceptance_rate": 1.0,
+  "status_counts": {
+    "passed": 822,
+    "passed_empty": 18,
+    "timeout": 72,
+    "failed": 181
+  },
+  "status_rates": {
+    "passed": 0.7520585544373285,
+    "passed_empty": 0.01646843549862763,
+    "timeout": 0.06587374199451052,
+    "failed": 0.1655992680695334
+  },
+  "scope_counts": {
+    "provider_success": 840,
+    "upstream_timeout": 72,
+    "upstream_transport": 95,
+    "akshare_runtime": 60,
+    "upstream_response": 26
+  },
+  "scope_rates": {
+    "provider_success": 0.7685269899359561,
+    "upstream_timeout": 0.06587374199451052,
+    "upstream_transport": 0.08691674290942361,
+    "akshare_runtime": 0.05489478499542543,
+    "upstream_response": 0.023787740164684355
+  }
+}
