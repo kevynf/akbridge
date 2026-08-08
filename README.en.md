@@ -55,10 +55,10 @@ for schedules, gates, and repository settings.
 Use [`uv`](https://docs.astral.sh/uv/getting-started/installation/) to install AKBridge as an
 isolated command-line tool. `uv` manages the required Python 3.11+ environment.
 
-Install the current GitHub version:
+Install the latest published release from PyPI:
 
 ```powershell
-uv tool install "git+https://github.com/kevynf/akbridge.git"
+uv tool install akbridge
 uv tool update-shell
 ```
 
@@ -72,18 +72,15 @@ akbridge --mode router
 The second command starts the stdio MCP server and waits for a client. No additional terminal output
 is expected; press `Ctrl+C` to stop it.
 
-After the package is published to PyPI, install it with:
+To install the development version from the GitHub default branch, use:
 
 ```powershell
-uv tool install akbridge
+uv tool install --force "git+https://github.com/kevynf/akbridge.git"
 ```
 
 Upgrade or uninstall:
 
 ```powershell
-# GitHub installation
-uv tool install --force "git+https://github.com/kevynf/akbridge.git"
-
 # PyPI installation
 uv tool upgrade akbridge
 

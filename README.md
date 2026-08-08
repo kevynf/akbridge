@@ -56,10 +56,10 @@ AKBridge 使用 GitHub Actions 和 Dependabot 自动检查 AKShare 更新；同�
 
 推荐使用 [`uv`](https://docs.astral.sh/uv/getting-started/installation/) 独立安装命令行工具。`uv` 会为 AKBridge 管理隔离的 Python 3.11+ 环境，不需要把依赖安装到系统 Python。
 
-当前可从 GitHub 安装：
+普通用户请从 PyPI 安装最新发布版：
 
 ```powershell
-uv tool install "git+https://github.com/kevynf/akbridge.git"
+uv tool install akbridge
 uv tool update-shell
 ```
 
@@ -72,18 +72,15 @@ akbridge --mode router
 
 第二条命令会启动 stdio MCP 服务并等待客户端连接，因此终端看起来没有继续输出是正常现象，可按 `Ctrl+C` 停止。
 
-项目发布到 PyPI 后，可改用：
+如需安装 GitHub 默认分支上的开发版本，可使用：
 
 ```powershell
-uv tool install akbridge
+uv tool install --force "git+https://github.com/kevynf/akbridge.git"
 ```
 
 更新或卸载：
 
 ```powershell
-# GitHub 安装：重新解析默认分支并覆盖安装
-uv tool install --force "git+https://github.com/kevynf/akbridge.git"
-
 # PyPI 安装：升级到最新已发布版本
 uv tool upgrade akbridge
 
