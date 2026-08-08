@@ -87,8 +87,8 @@ jobs:
       - name: Verify distributions include the documentation index
         shell: bash
         run: |
-          unzip -l dist/*.whl | grep -q 'akbridge/data/akshare-docs.json'
-          tar -tzf dist/*.tar.gz | grep -q 'src/akbridge/data/akshare-docs.json'
+          unzip -l dist/*.whl | grep 'akbridge/data/akshare-docs.json' >/dev/null
+          tar -tzf dist/*.tar.gz | grep 'src/akbridge/data/akshare-docs.json' >/dev/null
       - name: Check catalog and MCP contract
         run: >-
           uv run --no-sync akbridge-maintain ci --strict
@@ -98,7 +98,7 @@ jobs:
           --report artifacts/maintenance/latest.json
           --check-latest
       - name: Publish documentation coverage summary
-        if: always()
+        if: ${{ always() && hashFiles('artifacts/maintenance/latest.json') != '' }}
         shell: bash
         run: |
           python - <<'PY' >> "$GITHUB_STEP_SUMMARY"

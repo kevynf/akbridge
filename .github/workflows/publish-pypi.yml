@@ -63,8 +63,8 @@ jobs:
       - name: Verify distributions include the documentation index
         shell: bash
         run: |
-          unzip -l dist/*.whl | grep -q 'akbridge/data/akshare-docs.json'
-          tar -tzf dist/*.tar.gz | grep -q 'src/akbridge/data/akshare-docs.json'
+          unzip -l dist/*.whl | grep 'akbridge/data/akshare-docs.json' >/dev/null
+          tar -tzf dist/*.tar.gz | grep 'src/akbridge/data/akshare-docs.json' >/dev/null
       - name: Check package metadata
         run: uv run --no-sync twine check dist/*
       - name: Upload package distributions
