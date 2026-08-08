@@ -6,8 +6,9 @@
     <a href="https://github.com/kevynf/akbridge/blob/master/README.en.md">English</a>
   </p>
   <p>
-    <a href="https://github.com/kevynf/akbridge/actions/workflows/akbridge-maintenance.yml"><img alt="持续集成" src="https://github.com/kevynf/akbridge/actions/workflows/akbridge-maintenance.yml/badge.svg"></a>
+    <a href="https://github.com/kevynf/akbridge/actions/workflows/akbridge-maintenance.yml"><img alt="CI" src="https://github.com/kevynf/akbridge/actions/workflows/akbridge-maintenance.yml/badge.svg?branch=master&amp;label=CI"></a>
     <img alt="Python 3.11+" src="https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&logoColor=white">
+    <a href="https://pypi.org/project/akbridge/"><img alt="AKShare dependency version" src="https://img.shields.io/pypi/dependency-version/akbridge/akshare?label=AKShare"></a>
     <a href="https://github.com/akfamily/akshare"><img alt="Data: AKShare" src="https://img.shields.io/badge/Data%20Science-AKShare-green"></a>
     <a href="https://modelcontextprotocol.io/"><img alt="MCP stdio 与 SSE" src="https://img.shields.io/badge/MCP-stdio%20%7C%20SSE-6f42c1"></a>
     <a href="LICENSE"><img alt="MIT 许可证" src="https://img.shields.io/badge/License-MIT-yellow.svg"></a>
