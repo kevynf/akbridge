@@ -1,5 +1,7 @@
 # AKBridge 自动化验收与维护
 
+[English](automated-validation-and-maintenance.en.md)
+
 本文定义 AKBridge 的自动维护边界。所有默认命令均为确定性程序：它们不调用 LLM、不等待人工输入，也不把外部数据源的短暂不可用误判为 MCP 适配回归。
 
 ## 分层检查

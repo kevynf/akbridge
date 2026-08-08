@@ -6,9 +6,9 @@
     <a href="https://github.com/kevynf/akbridge/blob/master/README.en.md">English</a>
   </p>
   <p>
-    <a href="https://github.com/kevynf/akbridge/actions/workflows/akbridge-maintenance.yml"><img alt="CI" src="https://github.com/kevynf/akbridge/actions/workflows/akbridge-maintenance.yml/badge.svg?branch=master&amp;label=CI"></a>
+    <a href="https://github.com/kevynf/akbridge/actions/workflows/akbridge-maintenance.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/kevynf/akbridge/akbridge-maintenance.yml?branch=master&amp;label=CI"></a>
     <img alt="Python 3.11+" src="https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&logoColor=white">
-    <a href="https://pypi.org/project/akbridge/"><img alt="AKShare dependency version" src="https://img.shields.io/pypi/dependency-version/akbridge/akshare?label=AKShare"></a>
+    <a href="https://pypi.org/project/akbridge/"><img alt="PyPI version" src="https://img.shields.io/pypi/v/akbridge?label=PyPI"></a>
     <a href="https://github.com/akfamily/akshare"><img alt="Data: AKShare" src="https://img.shields.io/badge/Data%20Science-AKShare-green"></a>
     <a href="https://modelcontextprotocol.io/"><img alt="MCP stdio 与 SSE" src="https://img.shields.io/badge/MCP-stdio%20%7C%20SSE-6f42c1"></a>
     <a href="LICENSE"><img alt="MIT 许可证" src="https://img.shields.io/badge/License-MIT-yellow.svg"></a>
@@ -35,7 +35,7 @@ AKBridge 不替代 AKShare：AKShare 负责数据获取，AKBridge 负责把这�
 
 ![AKBridge 最新验收状态](https://raw.githubusercontent.com/kevynf/akbridge/master/artifacts/acceptance/status.svg)
 
-状态图由验收报告命令自动生成，详细结果见[验收汇总](artifacts/acceptance/SUMMARY.md)和[逐接口明细](artifacts/acceptance/ledger.csv)。
+状态图由验收报告命令自动生成，详细结果见[中文验收汇总](artifacts/acceptance/SUMMARY.md)、[English acceptance summary](artifacts/acceptance/SUMMARY.en.md)和[逐接口明细](artifacts/acceptance/ledger.csv)。
 
 ### 自动化维护
 
@@ -121,18 +121,22 @@ akbridge --mode all
 akbridge --mode router
 ```
 
-检索器从 AKShare 公开函数自动生成 `一级分类 → 源码模块 → 接口` 路由树。例如 `stock → stock_feature.stock_hist_em → stock_zh_a_hist`。函数名、签名、别名和 docstring 构成默认的确定性词法证据；不调用 LLM、嵌入服务或远程向量数据库。MCP 资源 `akbridge://skill` 同时提供同一套调用顺序说明。
+检索器从 AKShare 公开函数自动生成 `一级分类 → 源码模块 → 接口` 路由树。例如 `stock → stock_feature.stock_hist_em → stock_zh_a_hist`。函数名、签名、别名和 docstring 构成默认的确定性词法证据；不调用 LLM、嵌入服务或远程向量数据库。MCP 资源 `akbridge://skill` 提供同一套运行时调用规程；它随服务暴露，不会自动安装成客户端 Skill。
 
 ### AKShare 文档词法路由
 
-可选地从 AKShare GitHub `docs/` 构建本地文档索引。建议使用已验证的提交 SHA 固定来源；构建只在显式运行命令时联网，服务搜索期间只读取本地 JSON：
+正式发布的 wheel 和 sdist 会在 GitHub Actions 中，根据固定的 AKShare 版本解析对应的 `release-vX.Y.Z` 标签和 commit SHA，自动构建并包含文档索引。`router` 模式默认加载包内索引，服务搜索期间不会联网。
+
+源码开发时也可手动重建或覆盖索引：
 
 ```powershell
 akbridge-docs build --ref <akshare-commit-sha> --output artifacts\akshare-docs.json
 akbridge --mode router --document-index artifacts\akshare-docs.json
 ```
 
-文档块会关联 AKShare 顶层公开函数，只补充自然语言术语和排序证据，不决定领域或模块结构。搜索结果会返回命中的文档标题和来源链接；无法加载文档索引时，可不传 `--document-index`，继续使用内置的源码模块路由。
+文档块会关联 AKShare 顶层公开函数，只补充自然语言术语和排序证据，不决定领域或模块结构。搜索结果会返回命中的文档标题和来源链接；`--document-index` 仅用于覆盖发布包内置索引。
+
+自动维护报告会记录文档块数量、必填字段完整率、公开接口关联覆盖率以及未关联接口列表；同一摘要显示在 GitHub Actions 的 maintenance Job Summary 中。
 
 ## Codex 配置
 
@@ -430,7 +434,7 @@ AKShare 依赖多个第三方数据网站。先增加工具超时并重试；如
 
 ## 当前限制
 
-- 当前 Skill 仅提供通用调用规则，尚无面向不同客户端和金融领域的可安装模块。
+- 内置 Skill 是随 MCP 服务暴露的通用运行时调用规程，不会自动安装成客户端模块；目前尚无面向不同客户端和金融领域的可安装 Skills。
 - 当前 RAG 只有接口目录和词法检索，缺少金融知识、术语映射、向量召回与重排。
 
 ## 后续方向
@@ -443,7 +447,8 @@ AKShare 依赖多个第三方数据网站。先增加工具超时并重试；如
 ## 项目文档
 
 - [自动化验收与维护](docs/automated-validation-and-maintenance.zh-CN.md)
-- [安全策略](SECURITY.md)
+- [Automated validation and maintenance](docs/automated-validation-and-maintenance.en.md)
+- [安全策略](SECURITY.md) / [Security policy](SECURITY.en.md)
 
 ## 参与贡献
 

@@ -64,8 +64,31 @@ jobs:
         run: >-
           uv run --no-sync akbridge-accept run --offline --workers 4
           --output artifacts/acceptance/runs/offline.json
+      - name: Build version-matched AKShare documentation index
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          akshare_version="$(uv run --no-sync python -c 'import akshare; print(akshare.__version__)')"
+          akshare_tag="release-v${akshare_version}"
+          akshare_ref="$(gh api "repos/akfamily/akshare/commits/${akshare_tag}" --jq .sha)"
+          uv run --no-sync akbridge-docs build \
+            --ref "${akshare_ref}" \
+            --output src/akbridge/data/akshare-docs.json
+          uv run --no-sync python -c \
+            "import akshare; from akbridge.documents import load_builtin_document_chunks; assert load_builtin_document_chunks(expected_version=akshare.__version__)"
+      - name: Refresh acceptance status with documentation coverage
+        run: >-
+          uv run --no-sync akbridge-accept report
+          --run artifacts/acceptance/runs/offline.json
+          --output-dir artifacts/acceptance
       - name: Build distributable package
         run: uv build
+      - name: Verify distributions include the documentation index
+        shell: bash
+        run: |
+          unzip -l dist/*.whl | grep -q 'akbridge/data/akshare-docs.json'
+          tar -tzf dist/*.tar.gz | grep -q 'src/akbridge/data/akshare-docs.json'
       - name: Check catalog and MCP contract
         run: >-
           uv run --no-sync akbridge-maintain ci --strict
@@ -74,6 +97,32 @@ jobs:
           --catalog artifacts/catalog.json
           --report artifacts/maintenance/latest.json
           --check-latest
+      - name: Publish documentation coverage summary
+        if: always()
+        shell: bash
+        run: |
+          python - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json
+          from pathlib import Path
+
+          report = json.loads(Path("artifacts/maintenance/latest.json").read_text(encoding="utf-8"))
+          documentation = report.get("documentation", {})
+          print("## AKShare documentation index")
+          print(f"- Status: `{documentation.get('status', 'unavailable')}`")
+          print(f"- Document chunks: {documentation.get('chunk_count', 0)}")
+          print(
+              "- Interface coverage: "
+              f"{documentation.get('documented_interface_count', 0)}/"
+              f"{documentation.get('interface_count', 0)} "
+              f"({documentation.get('interface_coverage_percent', 0)}%)"
+          )
+          print(
+              "- Complete document fields: "
+              f"{documentation.get('complete_chunk_count', 0)}/"
+              f"{documentation.get('chunk_count', 0)} "
+              f"({documentation.get('chunk_field_coverage_percent', 0)}%)"
+          )
+          PY
       - name: Upload maintenance report
         if: always()
         uses: actions/upload-artifact@v7
@@ -82,9 +131,14 @@ jobs:
           if-no-files-found: ignore
           path: |
             artifacts/maintenance/
-            artifacts/acceptance/runs/
+            artifacts/acceptance/
       - name: Upload package distributions
         uses: actions/upload-artifact@v7
         with:
           name: akbridge-distributions
           path: dist/
+      - name: Upload AKShare documentation index
+        uses: actions/upload-artifact@v7
+        with:
+          name: akshare-document-index
+          path: src/akbridge/data/akshare-docs.json

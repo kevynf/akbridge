@@ -203,7 +203,7 @@ def classify_result(result: dict[str, Any]) -> tuple[str, str | None]:
 
 
 def _write_status_svg(summary: dict[str, Any], output_path: Path) -> None:
-    """Render a transparent availability-stripe chart for repository READMEs."""
+    """Render a theme-aware availability-stripe chart for repository READMEs."""
     ET.register_namespace("", SVG_NAMESPACE)
     status_counts = summary["status_counts"]
     interface_count = summary["interface_count"]
@@ -220,8 +220,11 @@ def _write_status_svg(summary: dict[str, Any], output_path: Path) -> None:
             "akshare_runtime",
         )
     )
+    documentation = summary.get("documentation", {})
+    documentation_available = documentation.get("status") == "ok"
     legend_rows = max(1, (len(ordered_statuses) + 3) // 4)
-    legend_y = 164 if provider_report else 96
+    documentation_y = 162 if provider_report else 94
+    legend_y = documentation_y + 70 if documentation_available else (164 if provider_report else 96)
     height = legend_y + 26 + (legend_rows - 1) * 34
 
     root = ET.Element(
@@ -240,14 +243,26 @@ def _write_status_svg(summary: dict[str, Any], output_path: Path) -> None:
     ).text = "使用短竖线表示 MCP 适配通过率和数据源动态验收组分。"
     style = ET.SubElement(root, f"{{{SVG_NAMESPACE}}}style")
     style.text = """
+      .background { fill: #ffffff; }
       .primary { fill: #1f2328; }
       .muted { fill: #656d76; }
       text { font-family: "Segoe UI", "Microsoft YaHei", sans-serif; }
       @media (prefers-color-scheme: dark) {
+        .background { fill: #0d1117; }
         .primary { fill: #f0f6fc; }
         .muted { fill: #8b949e; }
       }
     """
+    ET.SubElement(
+        root,
+        f"{{{SVG_NAMESPACE}}}rect",
+        {
+            "class": "background",
+            "width": "860",
+            "height": str(height),
+            "rx": "6",
+        },
+    )
 
     def add_text(
         value: str,
@@ -361,6 +376,42 @@ def _write_status_svg(summary: dict[str, Any], output_path: Path) -> None:
                 },
             )
 
+    if documentation_available:
+        documented_count = int(documentation["documented_interface_count"])
+        add_text(
+            f"文档接口覆盖率 {ratio(documented_count):.2%}",
+            16,
+            documentation_y,
+            size=22,
+            weight=600,
+        )
+        add_text(
+            f"{documented_count} / {interface_count}",
+            844,
+            documentation_y,
+            css_class="muted",
+            size=18,
+            anchor="end",
+        )
+        for index in range(stripe_count):
+            target = ((index + 0.5) / stripe_count) * interface_count
+            color = "#2da44e" if target <= documented_count else "#bf8700"
+            x = 20 + index * (820 / (stripe_count - 1))
+            ET.SubElement(
+                root,
+                f"{{{SVG_NAMESPACE}}}line",
+                {
+                    "class": "documentation-line",
+                    "x1": f"{x:.2f}",
+                    "y1": str(documentation_y + 10),
+                    "x2": f"{x:.2f}",
+                    "y2": str(documentation_y + 32),
+                    "stroke": color,
+                    "stroke-width": "4",
+                    "stroke-linecap": "round",
+                },
+            )
+
     for index, status in enumerate(ordered_statuses):
         column = index % 4
         row = index // 4
@@ -453,6 +504,17 @@ def write_acceptance_artifacts(run_path: Path, output_dir: Path) -> dict[str, An
         "scope_counts": scope_counts,
         "scope_rates": {key: ratio(value) for key, value in scope_counts.items()},
     }
+    try:
+        from .catalog import discover_functions
+        from .documents import documentation_coverage, load_builtin_document_chunks
+
+        catalog = discover_functions()
+        summary["documentation"] = documentation_coverage(
+            catalog,
+            load_builtin_document_chunks(expected_version=str(summary["akshare_version"])),
+        )
+    except ValueError as exc:
+        summary["documentation"] = {"status": "invalid", "error": str(exc)}
     (output_dir / "summary.json").write_text(
         json.dumps(summary, ensure_ascii=False, indent=2) + "\n",
         encoding="utf-8",
@@ -491,7 +553,92 @@ def write_acceptance_artifacts(run_path: Path, output_dir: Path) -> dict[str, An
         "",
         "每个接口的精确结果见 `ledger.csv`。",
     ]
+    documentation = summary["documentation"]
+    lines.extend(
+        [
+            "",
+            "## 文档索引覆盖",
+            "",
+            f"- 状态：`{documentation['status']}`",
+            f"- 文档块：**{documentation.get('chunk_count', 0)}**",
+            (
+                "- 公开接口关联：**"
+                f"{documentation.get('documented_interface_count', 0)} / "
+                f"{documentation.get('interface_count', 0)}"
+                f"（{documentation.get('interface_coverage_percent', 0):.2f}%）**"
+            ),
+            (
+                "- 文档字段完整：**"
+                f"{documentation.get('complete_chunk_count', 0)} / "
+                f"{documentation.get('chunk_count', 0)}"
+                f"（{documentation.get('chunk_field_coverage_percent', 0):.2f}%）**"
+            ),
+        ]
+    )
     (output_dir / "SUMMARY.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
+    english_lines = [
+        "# AKBridge Acceptance Summary",
+        "",
+        f"- AKShare version: `{summary['akshare_version']}`",
+        f"- Generated at: `{summary['generated_at']}`",
+        f"- Discovered interfaces: **{summary['interface_count']}**",
+        (
+            f"- MCP adapter acceptance: **{adapter_accepted} / {interface_count}"
+            f" ({percentage(adapter_accepted)})**"
+        ),
+        "",
+        "`MCP adapter acceptance` means that interfaces were discovered, input schemas were",
+        "generated, and MCP tool construction completed without an adapter failure. Provider",
+        "availability is reported separately.",
+        "",
+        "## Call Status",
+        "",
+        "| Status | Count | Rate |",
+        "| --- | ---: | ---: |",
+    ]
+    for status in sorted(status_counts):
+        english_lines.append(
+            f"| `{status}` | {status_counts[status]} / {interface_count} | "
+            f"{percentage(status_counts[status])} |"
+        )
+    english_lines.extend(
+        [
+            "",
+            "## Result Scope",
+            "",
+            "| Scope | Count | Rate |",
+            "| --- | ---: | ---: |",
+        ]
+    )
+    for scope in sorted(scope_counts):
+        english_lines.append(
+            f"| `{scope}` | {scope_counts[scope]} / {interface_count} | "
+            f"{percentage(scope_counts[scope])} |"
+        )
+    english_lines.extend(
+        [
+            "",
+            "## Documentation Index Coverage",
+            "",
+            f"- Status: `{documentation['status']}`",
+            f"- Document chunks: **{documentation.get('chunk_count', 0)}**",
+            (
+                "- Public interfaces linked: **"
+                f"{documentation.get('documented_interface_count', 0)} / "
+                f"{documentation.get('interface_count', 0)}"
+                f" ({documentation.get('interface_coverage_percent', 0):.2f}%)**"
+            ),
+            (
+                "- Complete document fields: **"
+                f"{documentation.get('complete_chunk_count', 0)} / "
+                f"{documentation.get('chunk_count', 0)}"
+                f" ({documentation.get('chunk_field_coverage_percent', 0):.2f}%)**"
+            ),
+            "",
+            "See `ledger.csv` for per-interface details.",
+        ]
+    )
+    (output_dir / "SUMMARY.en.md").write_text("\n".join(english_lines) + "\n", encoding="utf-8")
     _write_status_svg(summary, output_dir / "status.svg")
     return summary
 

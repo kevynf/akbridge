@@ -45,8 +45,26 @@ jobs:
         run: >-
           uv run --no-sync akbridge-accept run --offline --workers 4
           --output artifacts/acceptance/runs/offline.json
+      - name: Build version-matched AKShare documentation index
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          akshare_version="$(uv run --no-sync python -c 'import akshare; print(akshare.__version__)')"
+          akshare_tag="release-v${akshare_version}"
+          akshare_ref="$(gh api "repos/akfamily/akshare/commits/${akshare_tag}" --jq .sha)"
+          uv run --no-sync akbridge-docs build \
+            --ref "${akshare_ref}" \
+            --output src/akbridge/data/akshare-docs.json
+          uv run --no-sync python -c \
+            "import akshare; from akbridge.documents import load_builtin_document_chunks; assert load_builtin_document_chunks(expected_version=akshare.__version__)"
       - name: Build package
         run: uv build
+      - name: Verify distributions include the documentation index
+        shell: bash
+        run: |
+          unzip -l dist/*.whl | grep -q 'akbridge/data/akshare-docs.json'
+          tar -tzf dist/*.tar.gz | grep -q 'src/akbridge/data/akshare-docs.json'
       - name: Check package metadata
         run: uv run --no-sync twine check dist/*
       - name: Upload package distributions

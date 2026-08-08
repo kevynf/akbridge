@@ -92,6 +92,14 @@ def test_stdio_router_mode_is_small_and_calls_local_fixture() -> None:
             assert any(
                 str(resource.uri) == "akbridge://metrics" for resource in resources.resources
             )
+            skill = await session.read_resource("akbridge://skill")
+            skill_text = skill.contents[0].text
+            assert skill_text.startswith("# AKBridge Agent 运行规程")
+            assert "akbridge_search" in skill_text
+            assert "akbridge_describe" in skill_text
+            assert "akbridge_call" in skill_text
+            assert "文档索引" in skill_text
+            assert "验证与回退" in skill_text
             metrics = await session.read_resource("akbridge://metrics")
             assert json.loads(metrics.contents[0].text)["calls"] >= 1
 

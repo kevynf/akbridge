@@ -1,5 +1,7 @@
 # 贡献指南
 
+[English](CONTRIBUTING.en.md)
+
 感谢参与 AKBridge。代码、文档和测试修改都应保持可复现，并且不能依赖人工或 LLM 才能验收。
 
 ## 开发环境

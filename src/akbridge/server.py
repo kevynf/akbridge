@@ -9,6 +9,7 @@ import os
 from collections.abc import Mapping
 from typing import Any
 
+import akshare
 import mcp.server.stdio
 from mcp.server import Server
 from mcp.server.lowlevel import NotificationOptions
@@ -17,7 +18,7 @@ from mcp.types import Resource, TextContent, Tool, ToolAnnotations
 
 from . import __version__
 from .catalog import ApiFunction, coerce_arguments, discover_functions
-from .documents import load_document_chunks
+from .documents import load_builtin_document_chunks, load_document_chunks
 from .observability import configure_logging
 from .reliability import (
     CallExecutor,
@@ -212,7 +213,12 @@ def create_server(
     _apply_proxy_aliases()
     catalog = discover_functions() if catalog is None else catalog
     document_index_path = document_index_path or os.getenv("AKBRIDGE_DOCUMENT_INDEX")
-    documents = load_document_chunks(document_index_path) if document_index_path else None
+    akshare_version = str(getattr(akshare, "__version__", "unknown"))
+    documents = (
+        load_document_chunks(document_index_path, expected_version=akshare_version)
+        if document_index_path
+        else load_builtin_document_chunks(expected_version=akshare_version)
+    )
     index = CatalogIndex(catalog, documents)
     call_executor = executor or _default_executor()
     default_output = output_mode or os.getenv(

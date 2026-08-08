@@ -21,6 +21,7 @@ import akshare
 
 from .acceptance import build_manifest, run_acceptance, write_acceptance_artifacts, write_manifest
 from .catalog import ApiFunction, discover_functions
+from .documents import documentation_coverage, load_builtin_document_chunks
 from .router import CatalogIndex
 
 
@@ -268,6 +269,20 @@ def run_maintenance(
     diff = diff_manifests(previous, current)
     validation = validate_catalog(catalog)
     mcp_validation = validate_mcp_contract(catalog)
+    try:
+        documentation = documentation_coverage(
+            catalog,
+            load_builtin_document_chunks(
+                expected_version=str(getattr(akshare, "__version__", "unknown"))
+            ),
+        )
+    except ValueError as exc:
+        documentation = {
+            "status": "invalid",
+            "error": str(exc),
+            "chunk_count": 0,
+            "interface_count": len(catalog),
+        }
     # Constructing the index is itself a useful RAG contract check.
     index = CatalogIndex(catalog)
     categories: dict[str, int] = {}
@@ -315,6 +330,7 @@ def run_maintenance(
         "current_fingerprint": manifest_fingerprint(current),
         "validation": validation,
         "mcp_validation": mcp_validation,
+        "documentation": documentation,
         "diff": diff,
         "categories": dict(sorted(categories.items())),
         "version_check": version_check,
