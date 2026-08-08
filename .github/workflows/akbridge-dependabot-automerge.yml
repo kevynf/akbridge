@@ -48,7 +48,7 @@ jobs:
               return;
             }
             if (!pull.head.ref.startsWith("dependabot/uv/akshare-")) {
-              core.setFailed(`Unexpected Dependabot branch: ${pull.head.ref}`);
+              core.info(`Leaving non-AKShare Dependabot PR for manual review: ${pull.head.ref}`);
               return;
             }
             if (pull.head.sha !== run.head_sha) {
