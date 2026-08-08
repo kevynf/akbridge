@@ -10,6 +10,9 @@ updates:
     allow:
       - dependency-name: "akshare"
       - dependency-name: "mcp"
+    ignore:
+      - dependency-name: "mcp"
+        versions: [">= 2.0.0"]
     open-pull-requests-limit: 1
     rebase-strategy: "auto"
     commit-message:
