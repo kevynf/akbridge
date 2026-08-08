@@ -23,7 +23,7 @@ classifiers = [
 ]
 dependencies = [
   "akshare==1.18.81",
-  "mcp==1.28.1",
+  "mcp==2.0.0",
   "pandas>=2.2.0",
 ]
 
