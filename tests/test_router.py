@@ -58,3 +58,26 @@ def test_router_exposes_exactly_three_stable_tools() -> None:
         "akbridge_describe",
         "akbridge_call",
     }
+
+
+def test_search_uses_document_text_and_domain_terms_for_routing() -> None:
+    index = CatalogIndex(
+        {
+            "stock_zh_a_hist": _api("stock_zh_a_hist", "A股历史行情", category="stock"),
+            "macro_china_cpi": _api("macro_china_cpi", "CPI", category="macro"),
+        },
+        documents=[
+            {
+                "title": "居民消费价格指数",
+                "source_url": "https://example.test/cpi",
+                "text": "居民消费价格指数反映中国宏观经济中的消费价格变化。",
+                "api_names": ["macro_china_cpi"],
+            }
+        ],
+    )
+
+    payload = index.search_payload("中国居民消费价格指数")
+
+    assert payload["results"][0]["name"] == "macro_china_cpi"
+    assert payload["results"][0]["documentation"][0]["source_url"] == "https://example.test/cpi"
+    assert index.search("宏观经济")[0].api.name == "macro_china_cpi"

@@ -17,6 +17,7 @@ from mcp.types import Resource, TextContent, Tool, ToolAnnotations
 
 from . import __version__
 from .catalog import ApiFunction, coerce_arguments, discover_functions
+from .documents import load_document_chunks
 from .observability import configure_logging
 from .reliability import (
     CallExecutor,
@@ -194,6 +195,7 @@ def create_server(
     catalog: dict[str, ApiFunction] | None = None,
     executor: CallExecutor | None = None,
     call_timeout: float | None = None,
+    document_index_path: str | None = None,
 ) -> Server:
     """Create an MCP server.
 
@@ -209,7 +211,9 @@ def create_server(
         raise ValueError(f"unsupported mode: {selected_mode}; choose all, router, or hybrid")
     _apply_proxy_aliases()
     catalog = discover_functions() if catalog is None else catalog
-    index = CatalogIndex(catalog)
+    document_index_path = document_index_path or os.getenv("AKBRIDGE_DOCUMENT_INDEX")
+    documents = load_document_chunks(document_index_path) if document_index_path else None
+    index = CatalogIndex(catalog, documents)
     call_executor = executor or _default_executor()
     default_output = output_mode or os.getenv(
         "AKBRIDGE_OUTPUT_MODE", "compact" if selected_mode == "router" else "raw"
@@ -431,7 +435,13 @@ def main() -> None:
     parser.add_argument(
         "--call-timeout", type=float, default=_env_float("AKBRIDGE_CALL_TIMEOUT", 120.0)
     )
+    parser.add_argument(
+        "--document-index",
+        help="Path to a local index built with akbridge-docs; never fetched at request time.",
+    )
     args = parser.parse_args()
+    if args.document_index:
+        os.environ["AKBRIDGE_DOCUMENT_INDEX"] = args.document_index
     if args.transport == "sse":
         # The SSE constructor reads the same environment defaults.  Preserve
         # the explicit CLI override for the process it launches.

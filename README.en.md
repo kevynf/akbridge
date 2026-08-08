@@ -125,6 +125,22 @@ Router mode:
 uv run akbridge --mode router
 ```
 
+### AKShare documentation lexical routing
+
+Optionally build a local documentation index from AKShare's GitHub `docs/` tree. Use a verified
+commit SHA to pin the source. The build command accesses the network only when it is explicitly
+run; the MCP server reads only the resulting local JSON during searches:
+
+```powershell
+akbridge-docs build --ref <akshare-commit-sha> --output artifacts\akshare-docs.json
+akbridge --mode router --document-index artifacts\akshare-docs.json
+```
+
+Documentation chunks are linked to AKShare's public top-level functions and add domain weighting
+for stocks, funds, macroeconomics, futures, options, bonds, foreign exchange, and indexes. Search
+results include matching documentation titles and source links. Omit `--document-index` to retain
+the built-in catalog-only search when no local index is available.
+
 ## Acceptance model
 
 `akbridge-accept manifest` writes a versioned inventory of all discovered

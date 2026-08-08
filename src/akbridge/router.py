@@ -15,6 +15,20 @@ from .catalog import CATEGORY_LABELS, ApiFunction
 
 ROUTER_TOOL_NAMES = ("akbridge_search", "akbridge_describe", "akbridge_call")
 
+DOMAIN_TERMS: dict[str, tuple[str, ...]] = {
+    "stock": ("stock", "股票", "a股", "港股", "美股", "证券"),
+    "fund": ("fund", "基金", "etf", "理财"),
+    "macro": ("macro", "宏观", "经济", "cpi", "ppi", "gdp"),
+    "futures": ("futures", "期货", "商品"),
+    "option": ("option", "期权"),
+    "bond": ("bond", "债券", "国债"),
+    "forex": ("forex", "fx", "外汇", "汇率"),
+    "index": ("index", "指数"),
+    "crypto": ("crypto", "加密", "数字货币"),
+    "energy": ("energy", "能源", "原油", "煤炭"),
+    "banking": ("banking", "银行", "利率"),
+}
+
 SEARCH_SCHEMA: dict[str, Any] = {
     "type": "object",
     "properties": {
@@ -79,6 +93,11 @@ def _tokens(value: str) -> tuple[str, ...]:
     for piece in pieces:
         expanded.append(piece)
         expanded.extend(part for part in piece.split("_") if part and part != piece)
+        if re.fullmatch(r"[\u4e00-\u9fff]+", piece):
+            for width in range(2, min(4, len(piece)) + 1):
+                expanded.extend(
+                    piece[offset : offset + width] for offset in range(len(piece) - width + 1)
+                )
     return tuple(dict.fromkeys(expanded))
 
 
@@ -86,6 +105,7 @@ def _tokens(value: str) -> tuple[str, ...]:
 class SearchHit:
     api: ApiFunction
     score: float
+    documentation: tuple[dict[str, str], ...] = ()
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -100,17 +120,23 @@ class SearchHit:
             "return": self.api.return_metadata,
             "side_effect": self.api.side_effect,
             "score": round(self.score, 4),
+            "documentation": [
+                {key: item[key] for key in ("title", "source_url")} for item in self.documentation
+            ],
         }
 
 
 class CatalogIndex:
     """An in-memory inverted lexical index over :class:`ApiFunction` values."""
 
-    def __init__(self, catalog: dict[str, ApiFunction]):
+    def __init__(
+        self, catalog: dict[str, ApiFunction], documents: list[dict[str, Any]] | None = None
+    ):
         self.catalog = catalog
         self._aliases: dict[str, list[str]] = {}
         self._documents: dict[str, str] = {}
         self._compact_documents: dict[str, str] = {}
+        self._documentation: dict[str, list[dict[str, str]]] = {name: [] for name in catalog}
         for name, api in catalog.items():
             for alias in (name, *api.aliases):
                 key = alias.casefold().strip()
@@ -128,6 +154,19 @@ class CatalogIndex:
                 )
             ).casefold()
             self._compact_documents[name] = _compact(self._documents[name])
+        for chunk in documents or []:
+            text = str(chunk.get("text", "")).strip()
+            if not text:
+                continue
+            reference = {
+                "title": str(chunk.get("title", "")),
+                "source_url": str(chunk.get("source_url", "")),
+            }
+            for name in chunk.get("api_names", []):
+                if name in self.catalog:
+                    self._documentation[name].append(reference)
+                    self._documents[name] += " " + text.casefold()
+                    self._compact_documents[name] = _compact(self._documents[name])
 
     def resolve(self, name: str) -> ApiFunction | None:
         if not isinstance(name, str):
@@ -155,6 +194,11 @@ class CatalogIndex:
         query_terms = _tokens(query)
         compact_query = _compact(query)
         category_key = str(category or "").casefold().strip()
+        routed_categories = {
+            category_name
+            for category_name, terms in DOMAIN_TERMS.items()
+            if any(term in compact_query or term in query.casefold() for term in terms)
+        }
         hits: list[SearchHit] = []
         for name, api in self.catalog.items():
             if category_key and api.category.casefold() != category_key:
@@ -181,8 +225,10 @@ class CatalogIndex:
                     score += 10.0
                 if compact_query and compact_query in self._compact_documents[name]:
                     score += 35.0
+                if api.category in routed_categories:
+                    score += 15.0
             if score > 0:
-                hits.append(SearchHit(api, score))
+                hits.append(SearchHit(api, score, tuple(self._documentation[name][:3])))
         hits.sort(key=lambda hit: (-hit.score, hit.api.name))
         return hits[:limit]
 

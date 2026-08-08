@@ -46,6 +46,7 @@ release = [
 akbridge = "akbridge.server:main"
 akbridge-accept = "akbridge.acceptance:main"
 akbridge-maintain = "akbridge.maintenance:main"
+akbridge-docs = "akbridge.documents:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/akbridge"]

@@ -121,7 +121,18 @@ akbridge --mode all
 akbridge --mode router
 ```
 
-这个检索器只使用本地函数名、签名和 docstring 建立确定性词法索引；不调用 LLM、嵌入服务或远程向量数据库。MCP 资源 `akbridge://skill` 同时提供同一套调用顺序说明。
+这个检索器默认只使用本地函数名、签名和 docstring 建立确定性词法索引；不调用 LLM、嵌入服务或远程向量数据库。MCP 资源 `akbridge://skill` 同时提供同一套调用顺序说明。
+
+### AKShare 文档词法路由
+
+可选地从 AKShare GitHub `docs/` 构建本地文档索引。建议使用已验证的提交 SHA 固定来源；构建只在显式运行命令时联网，服务搜索期间只读取本地 JSON：
+
+```powershell
+akbridge-docs build --ref <akshare-commit-sha> --output artifacts\akshare-docs.json
+akbridge --mode router --document-index artifacts\akshare-docs.json
+```
+
+文档块会关联 AKShare 顶层公开函数，并按股票、基金、宏观、期货、期权、债券、外汇和指数等领域加权路由。搜索结果会返回命中的文档标题和来源链接；无法加载文档索引时，可不传 `--document-index`，继续使用内置目录检索。
 
 ## Codex 配置
 
