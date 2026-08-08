@@ -103,10 +103,12 @@ def test_route_table_is_generated_from_source_modules() -> None:
     index = CatalogIndex({stock.name: stock, macro.name: macro})
 
     assert index.route_table()["stock"]["stock_feature.stock_hist_em"] == ["stock_zh_a_hist"]
-    result = index.search_payload("stock_hist_em")["results"][0]
+    payload = index.search_payload("stock_hist_em")
+    result = payload["results"][0]
     assert result["route"]["path"] == [
         "stock",
         "stock_feature",
         "stock_hist_em",
         "stock_zh_a_hist",
     ]
+    assert payload["routing"]["modules"][0]["source_module"] == "stock_feature.stock_hist_em"

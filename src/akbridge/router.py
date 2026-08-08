@@ -106,6 +106,7 @@ class SearchHit:
     api: ApiFunction
     score: float
     documentation: tuple[dict[str, str], ...] = ()
+    route_score: float = 0.0
 
     def as_dict(self) -> dict[str, Any]:
         source_module = self.api.source_module
@@ -129,6 +130,7 @@ class SearchHit:
                 "category": self.api.category,
                 "source_module": source_module,
                 "path": [self.api.category, *module_path, self.api.name],
+                "score": round(self.route_score, 4),
             },
         }
 
@@ -145,6 +147,7 @@ class CatalogIndex:
         self._compact_documents: dict[str, str] = {}
         self._documentation: dict[str, list[dict[str, str]]] = {name: [] for name in catalog}
         self._route_table: dict[str, dict[str, list[str]]] = {}
+        self._module_documents: dict[tuple[str, str], str] = {}
         for name, api in catalog.items():
             for alias in (name, *api.aliases):
                 key = alias.casefold().strip()
@@ -165,6 +168,18 @@ class CatalogIndex:
             self._compact_documents[name] = _compact(self._documents[name])
             module = api.source_module.removeprefix("akshare.") or "unclassified"
             self._route_table.setdefault(api.category, {}).setdefault(module, []).append(name)
+            route_key = (api.category, module)
+            self._module_documents.setdefault(
+                route_key,
+                " ".join(
+                    (
+                        api.category,
+                        CATEGORY_LABELS.get(api.category, ""),
+                        module,
+                        module.replace(".", " ").replace("_", " "),
+                    )
+                ).casefold(),
+            )
         for chunk in documents or []:
             text = str(chunk.get("text", "")).strip()
             if not text:
@@ -185,6 +200,39 @@ class CatalogIndex:
             category: {module: list(names) for module, names in sorted(modules.items())}
             for category, modules in sorted(self._route_table.items())
         }
+
+    def _route_matches(
+        self,
+        query: str,
+        query_terms: tuple[str, ...],
+        compact_query: str,
+        category_key: str,
+    ) -> list[tuple[str, str, float]]:
+        routed_categories = {
+            category_name
+            for category_name, terms in DOMAIN_TERMS.items()
+            if any(term in compact_query or term in query.casefold() for term in terms)
+        }
+        matches: list[tuple[str, str, float]] = []
+        for (category, module), document in self._module_documents.items():
+            if category_key and category != category_key:
+                continue
+            score = 15.0 if category in routed_categories else 0.0
+            module_key = module.casefold()
+            for term in query_terms:
+                if term == module_key:
+                    score += 80.0
+                elif term in module_key:
+                    score += 30.0
+                elif term in document:
+                    score += 5.0
+            if query.casefold() and query.casefold() in module_key:
+                score += 40.0
+            if compact_query and compact_query in _compact(module):
+                score += 35.0
+            if score > 0:
+                matches.append((category, module, score))
+        return sorted(matches, key=lambda item: (-item[2], item[0], item[1]))
 
     def resolve(self, name: str) -> ApiFunction | None:
         if not isinstance(name, str):
@@ -212,10 +260,9 @@ class CatalogIndex:
         query_terms = _tokens(query)
         compact_query = _compact(query)
         category_key = str(category or "").casefold().strip()
-        routed_categories = {
-            category_name
-            for category_name, terms in DOMAIN_TERMS.items()
-            if any(term in compact_query or term in query.casefold() for term in terms)
+        route_matches = self._route_matches(query, query_terms, compact_query, category_key)
+        route_scores = {
+            (category_name, module): score for category_name, module, score in route_matches
         }
         hits: list[SearchHit] = []
         for name, api in self.catalog.items():
@@ -243,10 +290,18 @@ class CatalogIndex:
                     score += 10.0
                 if compact_query and compact_query in self._compact_documents[name]:
                     score += 35.0
-                if api.category in routed_categories:
-                    score += 15.0
+                module = api.source_module.removeprefix("akshare.") or "unclassified"
+                score += route_scores.get((api.category, module), 0.0)
             if score > 0:
-                hits.append(SearchHit(api, score, tuple(self._documentation[name][:3])))
+                module = api.source_module.removeprefix("akshare.") or "unclassified"
+                hits.append(
+                    SearchHit(
+                        api,
+                        score,
+                        tuple(self._documentation[name][:3]),
+                        route_scores.get((api.category, module), 0.0),
+                    )
+                )
         hits.sort(key=lambda hit: (-hit.score, hit.api.name))
         return hits[:limit]
 
@@ -254,11 +309,24 @@ class CatalogIndex:
         self, query: str = "", *, category: str | None = None, limit: int = 8
     ) -> dict[str, Any]:
         hits = self.search(query, category=category, limit=limit)
+        query_terms = _tokens(str(query or "").strip())
+        route_matches = self._route_matches(
+            str(query or "").strip(),
+            query_terms,
+            _compact(str(query or "")),
+            str(category or "").casefold().strip(),
+        )
         return {
             "query": query,
             "category": category,
             "count": len(hits),
             "results": [hit.as_dict() for hit in hits],
+            "routing": {
+                "modules": [
+                    {"category": category_name, "source_module": module, "score": round(score, 4)}
+                    for category_name, module, score in route_matches[:8]
+                ]
+            },
             "context": self.context(query, category=category, limit=limit),
         }
 
