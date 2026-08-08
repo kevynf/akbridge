@@ -17,6 +17,8 @@ jobs:
     name: tests (Python ${{ matrix.python-version }})
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      UV_PYTHON: ${{ matrix.python-version }}
     strategy:
       fail-fast: false
       matrix:
@@ -41,6 +43,8 @@ jobs:
     needs: tests
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      UV_PYTHON: "3.11"
     steps:
       - name: Check out source
         uses: actions/checkout@v7

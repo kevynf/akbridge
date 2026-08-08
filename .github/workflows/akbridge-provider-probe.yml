@@ -12,6 +12,8 @@ jobs:
   provider-acceptance:
     runs-on: ubuntu-latest
     timeout-minutes: 180
+    env:
+      UV_PYTHON: "3.11"
     steps:
       - name: Check out source
         uses: actions/checkout@v7
