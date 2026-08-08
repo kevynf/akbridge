@@ -88,6 +88,7 @@ def build_manifest(catalog: dict[str, ApiFunction]) -> dict[str, Any]:
                 "parameters": api.parameter_metadata,
                 "side_effect": api.side_effect,
                 "source_url": api.source_url,
+                "source_module": api.source_module,
                 "description": api.description,
                 "schema_hash": schema_hash,
                 "metadata_hash": hashlib.sha256(

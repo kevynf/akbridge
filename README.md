@@ -121,7 +121,7 @@ akbridge --mode all
 akbridge --mode router
 ```
 
-这个检索器默认只使用本地函数名、签名和 docstring 建立确定性词法索引；不调用 LLM、嵌入服务或远程向量数据库。MCP 资源 `akbridge://skill` 同时提供同一套调用顺序说明。
+检索器从 AKShare 公开函数自动生成 `一级分类 → 源码模块 → 接口` 路由树。例如 `stock → stock_feature.stock_hist_em → stock_zh_a_hist`。函数名、签名、别名和 docstring 构成默认的确定性词法证据；不调用 LLM、嵌入服务或远程向量数据库。MCP 资源 `akbridge://skill` 同时提供同一套调用顺序说明。
 
 ### AKShare 文档词法路由
 
@@ -132,7 +132,7 @@ akbridge-docs build --ref <akshare-commit-sha> --output artifacts\akshare-docs.j
 akbridge --mode router --document-index artifacts\akshare-docs.json
 ```
 
-文档块会关联 AKShare 顶层公开函数，并按股票、基金、宏观、期货、期权、债券、外汇和指数等领域加权路由。搜索结果会返回命中的文档标题和来源链接；无法加载文档索引时，可不传 `--document-index`，继续使用内置目录检索。
+文档块会关联 AKShare 顶层公开函数，只补充自然语言术语和排序证据，不决定领域或模块结构。搜索结果会返回命中的文档标题和来源链接；无法加载文档索引时，可不传 `--document-index`，继续使用内置的源码模块路由。
 
 ## Codex 配置
 

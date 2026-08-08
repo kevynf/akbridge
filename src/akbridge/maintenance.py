@@ -51,6 +51,7 @@ def manifest_fingerprint(manifest: dict[str, Any]) -> str:
                         "schema_hash",
                         "metadata_hash",
                         "category",
+                        "source_module",
                         "side_effect",
                     )
                 }
@@ -91,7 +92,14 @@ def diff_manifests(previous: dict[str, Any] | None, current: dict[str, Any]) -> 
     added = sorted(set(new) - set(old))
     removed = sorted(set(old) - set(new))
     changed: list[dict[str, Any]] = []
-    fields = ("signature", "schema_hash", "metadata_hash", "category", "side_effect")
+    fields = (
+        "signature",
+        "schema_hash",
+        "metadata_hash",
+        "category",
+        "source_module",
+        "side_effect",
+    )
     for name in sorted(set(old) & set(new)):
         differences = {
             field: {"previous": old[name].get(field), "current": new[name].get(field)}
@@ -190,12 +198,14 @@ def validate_mcp_contract(catalog: dict[str, ApiFunction]) -> dict[str, Any]:
 
 def semantic_catalog(catalog: dict[str, ApiFunction]) -> dict[str, Any]:
     """Build a compact JSON catalog intended for local RAG/indexing."""
+    index = CatalogIndex(catalog)
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "akshare_version": getattr(akshare, "__version__", "unknown"),
         "generated_at": dt.datetime.now(dt.UTC).isoformat(),
         "interface_count": len(catalog),
         "interfaces": [api.as_metadata(include_schema=False) for api in catalog.values()],
+        "routes": index.route_table(),
     }
 
 

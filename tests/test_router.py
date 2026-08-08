@@ -6,7 +6,9 @@ from akbridge.catalog import ApiFunction, signature_to_schema
 from akbridge.router import CatalogIndex, router_tool_definitions
 
 
-def _api(name: str, description: str, *, category: str = "other") -> ApiFunction:
+def _api(
+    name: str, description: str, *, category: str = "other", source_module: str = ""
+) -> ApiFunction:
     def function(symbol: str = "000001") -> dict[str, Any]:
         return {"symbol": symbol}
 
@@ -22,6 +24,7 @@ def _api(name: str, description: str, *, category: str = "other") -> ApiFunction
         use_cases=("查询数据",),
         examples=({"symbol": "000001"},),
         return_metadata={"kind": "object"},
+        source_module=source_module,
     )
 
 
@@ -81,3 +84,29 @@ def test_search_uses_document_text_and_domain_terms_for_routing() -> None:
     assert payload["results"][0]["name"] == "macro_china_cpi"
     assert payload["results"][0]["documentation"][0]["source_url"] == "https://example.test/cpi"
     assert index.search("宏观经济")[0].api.name == "macro_china_cpi"
+
+
+def test_route_table_is_generated_from_source_modules() -> None:
+    stock = _api(
+        "stock_zh_a_hist",
+        "A股历史行情",
+        category="stock",
+        source_module="akshare.stock_feature.stock_hist_em",
+    )
+    macro = _api(
+        "macro_china_cpi",
+        "CPI",
+        category="macro",
+        source_module="akshare.economic.macro_china",
+    )
+
+    index = CatalogIndex({stock.name: stock, macro.name: macro})
+
+    assert index.route_table()["stock"]["stock_feature.stock_hist_em"] == ["stock_zh_a_hist"]
+    result = index.search_payload("stock_hist_em")["results"][0]
+    assert result["route"]["path"] == [
+        "stock",
+        "stock_feature",
+        "stock_hist_em",
+        "stock_zh_a_hist",
+    ]

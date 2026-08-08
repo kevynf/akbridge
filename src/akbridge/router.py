@@ -108,6 +108,8 @@ class SearchHit:
     documentation: tuple[dict[str, str], ...] = ()
 
     def as_dict(self) -> dict[str, Any]:
+        source_module = self.api.source_module
+        module_path = source_module.removeprefix("akshare.").split(".") if source_module else []
         return {
             "name": self.api.name,
             "display_name": self.api.display_name or self.api.name,
@@ -123,6 +125,11 @@ class SearchHit:
             "documentation": [
                 {key: item[key] for key in ("title", "source_url")} for item in self.documentation
             ],
+            "route": {
+                "category": self.api.category,
+                "source_module": source_module,
+                "path": [self.api.category, *module_path, self.api.name],
+            },
         }
 
 
@@ -137,6 +144,7 @@ class CatalogIndex:
         self._documents: dict[str, str] = {}
         self._compact_documents: dict[str, str] = {}
         self._documentation: dict[str, list[dict[str, str]]] = {name: [] for name in catalog}
+        self._route_table: dict[str, dict[str, list[str]]] = {}
         for name, api in catalog.items():
             for alias in (name, *api.aliases):
                 key = alias.casefold().strip()
@@ -149,11 +157,14 @@ class CatalogIndex:
                     " ".join(api.aliases),
                     api.category,
                     CATEGORY_LABELS.get(api.category, ""),
+                    api.source_module,
                     " ".join(api.use_cases),
                     api.description,
                 )
             ).casefold()
             self._compact_documents[name] = _compact(self._documents[name])
+            module = api.source_module.removeprefix("akshare.") or "unclassified"
+            self._route_table.setdefault(api.category, {}).setdefault(module, []).append(name)
         for chunk in documents or []:
             text = str(chunk.get("text", "")).strip()
             if not text:
@@ -167,6 +178,13 @@ class CatalogIndex:
                     self._documentation[name].append(reference)
                     self._documents[name] += " " + text.casefold()
                     self._compact_documents[name] = _compact(self._documents[name])
+
+    def route_table(self) -> dict[str, dict[str, list[str]]]:
+        """Return the generated category -> source module -> public API tree."""
+        return {
+            category: {module: list(names) for module, names in sorted(modules.items())}
+            for category, modules in sorted(self._route_table.items())
+        }
 
     def resolve(self, name: str) -> ApiFunction | None:
         if not isinstance(name, str):

@@ -125,6 +125,11 @@ Router mode:
 uv run akbridge --mode router
 ```
 
+The router automatically builds a `category -> source module -> API` tree from AKShare's public
+functions. For example, `stock -> stock_feature.stock_hist_em -> stock_zh_a_hist`. Function
+names, signatures, aliases, and docstrings provide the default deterministic lexical evidence; no
+LLM, embedding service, or remote vector database is used.
+
 ### AKShare documentation lexical routing
 
 Optionally build a local documentation index from AKShare's GitHub `docs/` tree. Use a verified
@@ -136,10 +141,10 @@ akbridge-docs build --ref <akshare-commit-sha> --output artifacts\akshare-docs.j
 akbridge --mode router --document-index artifacts\akshare-docs.json
 ```
 
-Documentation chunks are linked to AKShare's public top-level functions and add domain weighting
-for stocks, funds, macroeconomics, futures, options, bonds, foreign exchange, and indexes. Search
+Documentation chunks are linked to AKShare's public top-level functions and add natural-language
+terms and ranking evidence only; they do not define categories or source-module structure. Search
 results include matching documentation titles and source links. Omit `--document-index` to retain
-the built-in catalog-only search when no local index is available.
+the built-in source-module routing when no local index is available.
 
 ## Acceptance model
 

@@ -67,4 +67,5 @@ def test_discovery_finds_public_akshare_functions() -> None:
     assert "stock_zh_a_hist" in catalog
     assert "stock_info_a_code_name" in catalog
     assert catalog["stock_zh_a_hist"].input_schema["type"] == "object"
+    assert catalog["stock_zh_a_hist"].source_module.startswith("akshare.")
     assert CatalogIndex(catalog).search("A股历史行情", limit=1)[0].api.name == "stock_zh_a_hist"

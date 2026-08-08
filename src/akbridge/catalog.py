@@ -45,6 +45,7 @@ class ApiFunction:
     parameter_metadata: dict[str, Any] = field(default_factory=dict)
     side_effect: bool = False
     source_url: str | None = None
+    source_module: str = ""
 
     def as_metadata(self, *, include_schema: bool = True) -> dict[str, Any]:
         """Return JSON-safe metadata suitable for a catalog or RAG result."""
@@ -61,6 +62,7 @@ class ApiFunction:
             "parameters": self.parameter_metadata,
             "side_effect": self.side_effect,
             "source_url": self.source_url,
+            "source_module": self.source_module,
         }
         if include_schema:
             payload["input_schema"] = self.input_schema
@@ -477,5 +479,6 @@ def discover_functions(
             parameter_metadata=dict(metadata["parameter_metadata"]),
             side_effect=bool(metadata["side_effect"]),
             source_url=metadata["source_url"],
+            source_module=str(getattr(value, "__module__", "")),
         )
     return catalog
