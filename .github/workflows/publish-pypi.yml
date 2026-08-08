@@ -1,0 +1,71 @@
+name: Publish AKBridge to PyPI
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+      - name: Install uv
+        uses: astral-sh/setup-uv@v9
+        with:
+          version: "0.11.32"
+      - name: Install dependencies
+        run: uv sync --extra dev --extra release --python "3.11"
+      - name: Verify release tag matches package version
+        shell: bash
+        run: |
+          package_version="$(uv run --no-sync python -c 'import tomllib; print(tomllib.load(open("pyproject.toml", "rb"))["project"]["version"])')"
+          runtime_version="$(uv run --no-sync python -c 'import akbridge; print(akbridge.__version__)')"
+          if [[ "${runtime_version}" != "${package_version}" ]]; then
+            echo "Runtime version ${runtime_version} does not match package version ${package_version}." >&2
+            exit 1
+          fi
+          if [[ "${GITHUB_REF_NAME}" != "v${package_version}" ]]; then
+            echo "Release tag ${GITHUB_REF_NAME} does not match package version v${package_version}." >&2
+            exit 1
+          fi
+      - name: Run deterministic tests
+        run: uv run --no-sync python -m pytest -q
+      - name: Run offline per-interface acceptance
+        run: >-
+          uv run --no-sync akbridge-accept run --offline --workers 4
+          --output artifacts/acceptance/runs/offline.json
+      - name: Build package
+        run: uv build
+      - name: Check package metadata
+        run: uv run --no-sync twine check dist/*
+      - name: Upload package distributions
+        uses: actions/upload-artifact@v7
+        with:
+          name: python-package-distributions
+          path: dist/
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/akbridge
+    permissions:
+      id-token: write
+    steps:
+      - name: Download package distributions
+        uses: actions/download-artifact@v8
+        with:
+          name: python-package-distributions
+          path: dist/
+      - name: Publish package distributions to PyPI
+        uses: pypa/gh-action-pypi-publish@v1.14.2

@@ -14,17 +14,17 @@ jobs:
     timeout-minutes: 180
     steps:
       - name: Check out source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: "3.11"
       - name: Install uv
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@v9
         with:
-          version: latest
+          version: "0.11.32"
       - name: Install dependencies
-        run: uv sync --extra dev
+        run: uv sync --extra dev --python "3.11"
       - name: Run isolated full provider acceptance
         run: >-
           uv run --no-sync akbridge-maintain ci --strict --provider
@@ -58,7 +58,7 @@ jobs:
           fi
       - name: Upload provider acceptance report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: akbridge-provider-acceptance
           path: |
