@@ -89,3 +89,41 @@ jobs:
           path: dist/
       - name: Publish package distributions to PyPI
         uses: pypa/gh-action-pypi-publish@v1.14.2
+
+  publish-registry:
+    needs: publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7
+      - name: Wait for PyPI metadata
+        shell: bash
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          for attempt in {1..24}; do
+            metadata="$(curl --fail --silent --show-error \
+              "https://pypi.org/pypi/akbridge/${version}/json" || true)"
+            if [[ -n "${metadata}" ]] && \
+              jq -e --arg version "${version}" '.info.version == $version' <<<"${metadata}" >/dev/null && \
+              jq -e '.info.description | contains("mcp-name: io.github.kevynf/akbridge")' \
+                <<<"${metadata}" >/dev/null; then
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "PyPI metadata for akbridge ${version} was not ready in time." >&2
+          exit 1
+      - name: Install MCP publisher
+        shell: bash
+        run: |
+          curl --fail --location \
+            "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_linux_amd64.tar.gz" \
+            | tar xz mcp-publisher
+      - name: Authenticate to MCP Registry
+        run: ./mcp-publisher login github-oidc
+      - name: Publish to MCP Registry
+        run: ./mcp-publisher publish
