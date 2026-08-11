@@ -16,6 +16,13 @@
   </p>
 </div>
 
+<p align="center">
+  <a href="#installation">Installation</a> |
+  <a href="#client-configuration">Client configuration</a> |
+  <a href="#development">Development</a> |
+  <a href="#acceptance-status">Acceptance status</a>
+</p>
+
 Automatically exposes AKShare public interfaces as MCP tools with routed
 discovery, structured output, per-interface acceptance, and automated
 validation and maintenance. The current AKShare baseline, interface count, and
@@ -95,7 +102,50 @@ uv tool upgrade akbridge
 uv tool uninstall akbridge
 ```
 
-MCP client configuration:
+## Client configuration
+
+Choose an MCP client to jump to its configuration: [Cherry Studio](#cherry-studio) or
+[other MCP clients](#other-mcp-clients).
+
+### Cherry Studio
+
+Cherry Studio can launch AKBridge directly over stdio; no additional adapter service is required.
+Router mode is recommended.
+
+#### Protocol installation
+
+Copy the following address into the browser address bar or the Windows Run dialog. When Cherry Studio opens, review the installation preview and confirm:
+
+```text
+cherrystudio://mcp/install?servers=eyJtY3BTZXJ2ZXJzIjp7ImFrYnJpZGdlIjp7InR5cGUiOiJzdGRpbyIsImNvbW1hbmQiOiJ1dngiLCJhcmdzIjpbImFrYnJpZGdlIiwiLS1tb2RlIiwicm91dGVyIl19fX0%3D
+```
+
+Cherry Studio imports protocol configurations as inactive and untrusted until the user explicitly
+approves them. If the system does not open the custom protocol, use the JSON import below.
+
+#### Import from JSON
+
+Open `Settings -> MCP -> MCP Servers -> Add -> Import from JSON`, then paste:
+
+```json
+{
+  "mcpServers": {
+    "akbridge": {
+      "type": "stdio",
+      "command": "uvx",
+      "args": ["akbridge", "--mode", "router"]
+    }
+  }
+}
+```
+
+Enable the server, verify that it connects, and bind AKBridge to the Agent that needs it. The first
+`uvx` launch may take longer while it downloads and creates the runtime environment.
+
+### Other MCP clients
+
+Clients that accept the common JSON MCP configuration format can use an existing `akbridge`
+installation:
 
 ```json
 {
