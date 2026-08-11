@@ -16,6 +16,12 @@
   </p>
 </div>
 
+<p align="center">
+  <a href="#安装">安装</a> |
+  <a href="#客户端配置">客户端配置</a> |
+  <a href="#调用示例">调用示例</a>
+</p>
+
 将 AKShare 公共接口自动暴露为 MCP 工具，并提供路由检索、结构化输出、逐接口验收以及自动化验收与维护。当前 AKShare 基线版本、接口数量和验收结果由[自动化报告](artifacts/maintenance/latest.json)记录。
 
 ## 为什么选择 AKBridge
@@ -139,7 +145,45 @@ akbridge --mode router --document-index artifacts\akshare-docs.json
 
 自动维护报告会记录文档块数量、必填字段完整率、公开接口关联覆盖率以及未关联接口列表；同一摘要显示在 GitHub Actions 的 maintenance Job Summary 中。
 
-## Codex 配置
+## 客户端配置
+
+选择使用的 MCP 客户端，快速跳转到对应配置：[Cherry Studio](#cherry-studio)、[Codex](#codex-配置)或[Claude Desktop 与兼容客户端](#claude-desktop-或兼容客户端配置)。
+
+### Cherry Studio
+
+Cherry Studio 可以通过 stdio 直接启动 AKBridge，不需要额外的适配服务。推荐使用 `router` 模式。
+
+#### 协议安装
+
+将下面的地址复制到浏览器地址栏或 Windows“运行”窗口，打开 Cherry Studio 后检查安装预览并确认：
+
+```text
+cherrystudio://mcp/install?servers=eyJtY3BTZXJ2ZXJzIjp7ImFrYnJpZGdlIjp7InR5cGUiOiJzdGRpbyIsImNvbW1hbmQiOiJ1dngiLCJhcmdzIjpbImFrYnJpZGdlIiwiLS1tb2RlIiwicm91dGVyIl19fX0%3D
+```
+
+Cherry Studio 会以未启用、未信任状态导入配置，仍需由用户确认并启用。
+
+如果系统没有打开自定义协议，请使用下方的 JSON 导入方式。
+
+#### 从 JSON 导入
+
+打开 `设置 → MCP → MCP 服务器 → 添加 → 从 JSON 导入`，粘贴：
+
+```json
+{
+  "mcpServers": {
+    "akbridge": {
+      "type": "stdio",
+      "command": "uvx",
+      "args": ["akbridge", "--mode", "router"]
+    }
+  }
+}
+```
+
+启用服务并确认状态正常后，将 AKBridge 绑定到需要使用它的 Agent。首次启动时 `uvx` 可能需要下载并创建运行环境，因此会比后续启动更慢。
+
+### Codex 配置
 
 在 Codex MCP 配置中加入：
 
@@ -153,7 +197,7 @@ tool_timeout_sec = 120
 
 保存配置并重启 Codex。客户端初始化成功后即可看到 AKShare 工具。
 
-## Claude Desktop 或兼容客户端配置
+### Claude Desktop 或兼容客户端配置
 
 支持 JSON MCP 配置的客户端可以使用：
 
