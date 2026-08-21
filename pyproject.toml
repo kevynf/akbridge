@@ -34,12 +34,15 @@ Issues = "https://github.com/kevynf/akbridge/issues"
 Documentation = "https://github.com/kevynf/akbridge#readme"
 
 [project.optional-dependencies]
+release = [
+  "twine==7.0.0",
+]
+
+[dependency-groups]
 dev = [
   "pytest>=8.3.0",
   "pytest-cov>=6.0.0",
-]
-release = [
-  "twine==7.0.0",
+  "ruff==0.16.2",
 ]
 
 [project.scripts]

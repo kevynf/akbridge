@@ -163,7 +163,7 @@ installation:
 ```powershell
 git clone https://github.com/kevynf/akbridge.git
 cd akbridge
-uv sync --extra dev
+uv sync --group dev
 uv run --no-sync python -m pytest -q
 uv run akbridge-accept manifest
 uv run --no-sync akbridge-accept run --offline --workers 4

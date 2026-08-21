@@ -7,15 +7,15 @@
 ## 开发环境
 
 ```powershell
-uv sync --extra dev
+uv sync --group dev
 ```
 
 ## 提交前检查
 
 ```powershell
 uv run --no-sync python -m pytest -q
-uvx --from ruff ruff check src tests
-uvx --from ruff ruff format --check src tests
+uv run --no-sync ruff check src tests
+uv run --no-sync ruff format --check src tests
 uv run --no-sync akbridge-accept run --offline --workers 4
 uv run --no-sync akbridge-maintain ci --strict --check-latest
 uv build
@@ -38,6 +38,9 @@ uv run --no-sync twine check dist/*
 为项目 `akbridge` 配置 GitHub Publisher：仓库 `kevynf/akbridge`、工作流
 `publish-pypi.yml`、环境 `pypi`。
 
-将 `pyproject.toml` 与 `src/akbridge/__init__.py` 中的版本同步更新后，创建同版本标签
-（例如 `v0.1.0`）并发布 GitHub Release。工作流会验证标签、运行测试和离线验收、检查
-wheel/sdist 元数据，再通过 OIDC 发布到 PyPI。
+发布由版本号驱动。同步更新 `pyproject.toml`、`src/akbridge/__init__.py`，以及 `server.json`
+中的顶层版本和包版本，然后合并到默认分支。完整 CI 成功后，`auto-release.yml` 会在默认分支
+仍指向已验证提交时创建同版本标签和 GitHub Release（例如 `v0.1.3`），再复用
+`publish-pypi.yml` 发布 PyPI 和 MCP Registry。已有同版本 Release 时流程保持幂等；标签存在
+但 Release 缺失或指向其他提交时会失败，需要维护者检查。人工发布 GitHub Release 仍会直接
+触发同一发布流程。

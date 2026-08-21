@@ -26,7 +26,7 @@ jobs:
         with:
           version: "0.11.32"
       - name: Install dependencies
-        run: uv sync --extra dev --python "3.11"
+        run: uv sync --group dev --python "3.11"
       - name: Run isolated full provider acceptance
         run: >-
           uv run --no-sync akbridge-maintain ci --strict --provider

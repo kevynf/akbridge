@@ -55,8 +55,8 @@ def test_write_acceptance_artifacts_creates_full_ledger(tmp_path: Path) -> None:
     assert 'class="availability-line"' in status_svg
     assert status_svg.count('class="availability-line"') == 64
     assert status_svg.count('class="mcp-line"') == 64
-    assert '.background { fill: #ffffff; }' in status_svg
-    assert '.background { fill: #0d1117; }' in status_svg
+    assert ".background { fill: #ffffff; }" in status_svg
+    assert ".background { fill: #0d1117; }" in status_svg
     assert 'class="background" width="860"' in status_svg
     with (tmp_path / "out" / "ledger.csv").open(encoding="utf-8-sig", newline="") as handle:
         assert len(list(csv.DictReader(handle))) == 2

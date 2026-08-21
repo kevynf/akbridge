@@ -1,0 +1,117 @@
+name: Automatically release version changes
+
+on:
+  workflow_run:
+    workflows: ["AKBridge automated validation and maintenance"]
+    types: [completed]
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: auto-release-${{ github.event.workflow_run.head_branch || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    if: >-
+      (github.event_name == 'workflow_dispatch' &&
+       github.ref_name == github.event.repository.default_branch) ||
+      (github.event_name == 'workflow_run' &&
+       github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'push' &&
+       github.event.workflow_run.head_branch == github.event.repository.default_branch)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    env:
+      RELEASE_BRANCH: ${{ github.event.workflow_run.head_branch || github.ref_name }}
+      RELEASE_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+    outputs:
+      created: ${{ steps.release.outputs.created }}
+      tag: ${{ steps.version.outputs.tag }}
+    steps:
+      - name: Check out validated source
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ env.RELEASE_SHA }}
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+      - name: Read and validate package version
+        id: version
+        shell: bash
+        run: |
+          version="$(python - <<'PY'
+          import ast
+          import json
+          import tomllib
+          from pathlib import Path
+
+          package_version = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))["project"]["version"]
+          tree = ast.parse(Path("src/akbridge/__init__.py").read_text(encoding="utf-8"))
+          runtime_version = next(
+              ast.literal_eval(node.value)
+              for node in tree.body
+              if isinstance(node, ast.Assign)
+              and any(isinstance(target, ast.Name) and target.id == "__version__" for target in node.targets)
+          )
+          registry = json.loads(Path("server.json").read_text(encoding="utf-8"))
+          registry_versions = {registry["version"], registry["packages"][0]["version"]}
+          if runtime_version != package_version or registry_versions != {package_version}:
+              raise SystemExit(
+                  "Version mismatch: "
+                  f"package={package_version}, runtime={runtime_version}, registry={registry_versions}."
+              )
+          print(package_version)
+          PY
+          )"
+          echo "tag=v${version}" >> "${GITHUB_OUTPUT}"
+      - name: Create tag and GitHub Release when needed
+        id: release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          branch_sha="$(gh api "repos/${GITHUB_REPOSITORY}/commits/${RELEASE_BRANCH}" --jq .sha)"
+          if [[ "${branch_sha}" != "${RELEASE_SHA}" ]]; then
+            echo "Skipping stale validation result ${RELEASE_SHA}; ${RELEASE_BRANCH} is now ${branch_sha}."
+            echo "created=false" >> "${GITHUB_OUTPUT}"
+            exit 0
+          fi
+
+          if gh release view "${RELEASE_TAG}" >/dev/null 2>&1; then
+            echo "Release ${RELEASE_TAG} already exists."
+            echo "created=false" >> "${GITHUB_OUTPUT}"
+            exit 0
+          fi
+
+          if git rev-parse --verify --quiet "refs/tags/${RELEASE_TAG}" >/dev/null; then
+            tag_sha="$(git rev-list -n 1 "${RELEASE_TAG}")"
+            if [[ "${tag_sha}" != "${RELEASE_SHA}" ]]; then
+              echo "Tag ${RELEASE_TAG} exists without a Release and points to ${tag_sha}, not ${RELEASE_SHA}." >&2
+              exit 1
+            fi
+            echo "Tag ${RELEASE_TAG} exists without a GitHub Release; refusing an ambiguous republish." >&2
+            exit 1
+          fi
+
+          gh release create "${RELEASE_TAG}" \
+            --target "${RELEASE_SHA}" \
+            --title "${RELEASE_TAG}" \
+            --generate-notes
+          echo "created=true" >> "${GITHUB_OUTPUT}"
+
+  publish:
+    needs: release
+    if: needs.release.outputs.created == 'true'
+    permissions:
+      contents: read
+      id-token: write
+    uses: ./.github/workflows/publish-pypi.yml
+    with:
+      release_tag: ${{ needs.release.outputs.tag }}

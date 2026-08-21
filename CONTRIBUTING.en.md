@@ -7,15 +7,15 @@ Thank you for contributing to AKBridge. Code, documentation, and test changes mu
 ## Development Environment
 
 ```powershell
-uv sync --extra dev
+uv sync --group dev
 ```
 
 ## Pre-commit Checks
 
 ```powershell
 uv run --no-sync python -m pytest -q
-uvx --from ruff ruff check src tests
-uvx --from ruff ruff format --check src tests
+uv run --no-sync ruff check src tests
+uv run --no-sync ruff format --check src tests
 uv run --no-sync akbridge-accept run --offline --workers 4
 uv run --no-sync akbridge-maintain ci --strict --check-latest
 uv build
@@ -36,4 +36,4 @@ Offline acceptance does not contact third-party providers or call an LLM. A sepa
 
 The release workflow uses PyPI Trusted Publishing and stores no API token in the repository. Before the first release, configure the GitHub Publisher for project `akbridge` on PyPI with repository `kevynf/akbridge`, workflow `publish-pypi.yml`, and environment `pypi`.
 
-After synchronizing the version in `pyproject.toml` and `src/akbridge/__init__.py`, create the matching tag (for example, `v0.1.0`) and publish a GitHub Release. The workflow validates the tag, runs tests and offline acceptance, builds the version-matched AKShare documentation index, verifies wheel/sdist metadata, and publishes through OIDC.
+Releases are version-driven. Update `pyproject.toml`, `src/akbridge/__init__.py`, and both version fields in `server.json`, then merge the change into the default branch. After the full CI succeeds, `auto-release.yml` creates the matching tag and GitHub Release (for example, `v0.1.3`) only if the default branch still points to the validated commit. It then reuses `publish-pypi.yml` to publish to PyPI and the MCP Registry. Existing releases are a no-op; a tag without a release, or a tag pointing elsewhere, fails for maintainer review. Manually published GitHub Releases still trigger the same publishing workflow.

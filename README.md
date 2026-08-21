@@ -102,7 +102,7 @@ uv tool uninstall akbridge
 ```powershell
 git clone https://github.com/kevynf/akbridge.git
 cd akbridge
-uv sync --extra dev
+uv sync --group dev
 uv run --no-sync akbridge --mode router
 ```
 

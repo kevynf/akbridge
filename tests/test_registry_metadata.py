@@ -4,7 +4,6 @@ import json
 import tomllib
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[1]
 MCP_NAME = "io.github.kevynf/akbridge"
 
@@ -20,9 +19,7 @@ def test_registry_metadata_matches_package() -> None:
     assert package["identifier"] == project["name"]
     assert package["version"] == project["version"]
     assert package["transport"] == {"type": "stdio"}
-    assert package["packageArguments"] == [
-        {"type": "named", "name": "--mode", "value": "router"}
-    ]
+    assert package["packageArguments"] == [{"type": "named", "name": "--mode", "value": "router"}]
 
 
 def test_pypi_readme_contains_registry_ownership_marker() -> None:
